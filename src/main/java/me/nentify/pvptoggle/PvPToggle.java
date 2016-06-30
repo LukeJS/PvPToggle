@@ -1,19 +1,27 @@
 package me.nentify.pvptoggle;
 
 import com.google.inject.Inject;
+import ninja.leaping.configurate.ConfigurationOptions;
+import ninja.leaping.configurate.commented.CommentedConfigurationNode;
+import ninja.leaping.configurate.hocon.HoconConfigurationLoader;
+import ninja.leaping.configurate.loader.ConfigurationLoader;
 import org.slf4j.Logger;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.spec.CommandSpec;
+import org.spongepowered.api.config.DefaultConfig;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.event.Listener;
 import org.spongepowered.api.event.cause.entity.damage.source.EntityDamageSource;
 import org.spongepowered.api.event.entity.DamageEntityEvent;
-import org.spongepowered.api.event.game.state.GameStartedServerEvent;
+import org.spongepowered.api.event.game.state.GamePreInitializationEvent;
 import org.spongepowered.api.event.network.ClientConnectionEvent;
 import org.spongepowered.api.plugin.Plugin;
 import org.spongepowered.api.text.Text;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.UUID;
 
@@ -23,11 +31,31 @@ public class PvPToggle {
     private Logger logger;
 
     // true = pvp is on, false = pvp is off
+    private boolean defaultPvp;
     private HashMap<UUID, Boolean> pvp = new HashMap<UUID, Boolean>();
 
+    @Inject
+    @DefaultConfig(sharedRoot = true)
+    private Path config;
+
     @Listener
-    public void onServerStart(GameStartedServerEvent event) {
-        logger.info("Hello from PvPToggle");
+    public void onPreInit(GamePreInitializationEvent event) {
+        logger.info("Enabling PvPToggle");
+
+        ConfigurationLoader<CommentedConfigurationNode> loader = HoconConfigurationLoader.builder().setPath(config).build();
+        CommentedConfigurationNode rootNode = loader.createEmptyNode(ConfigurationOptions.defaults());
+
+        if (!Files.exists(config)) {
+            try {
+                Files.createFile(config);
+                rootNode.getNode("default-pvp").setValue(true).setComment("true = PvP is on by default, false = PvP is off by default");
+                loader.save(rootNode);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        defaultPvp = rootNode.getNode("default-pvp").getBoolean();
 
         CommandSpec pvpToggleCommandSpec = CommandSpec.builder()
                 .description(Text.of("PvP toggle command"))
@@ -50,6 +78,8 @@ public class PvPToggle {
                 .build();
 
         Sponge.getCommandManager().register(this, pvpToggleCommandSpec, "pvp");
+
+        logger.info("PvPToggle enabled");
     }
 
     @Listener
@@ -88,7 +118,7 @@ public class PvPToggle {
     @Listener
     public void onPlayerLogin(ClientConnectionEvent.Join event) {
         UUID uuid = event.getTargetEntity().getUniqueId();
-        pvp.put(uuid, false); // PvP off by default
+        pvp.put(uuid, defaultPvp);
     }
 
     @Listener
