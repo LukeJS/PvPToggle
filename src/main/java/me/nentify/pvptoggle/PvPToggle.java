@@ -58,7 +58,7 @@ public class PvPToggle {
                         long time = System.currentTimeMillis();
 
                         if (cooldowns.containsKey(uuid)) {
-                            if (cooldowns.get(uuid) > time - (config.cooldown * 1000)) {
+                            if (cooldowns.get(uuid) > time - (config.cooldown * 1000) && !player.hasPermission("pvptoggle.nocooldown")) {
                                 source.sendMessage(Text.of(TextColors.RED, "You must wait " + (config.cooldown - ((time - cooldowns.get(uuid)) / 1000)) + " seconds before toggling PvP again"));
                                 return CommandResult.success();
                             }
