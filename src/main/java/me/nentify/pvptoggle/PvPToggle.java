@@ -24,7 +24,6 @@ import org.spongepowered.api.text.format.TextColors;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.UUID;
 
@@ -33,14 +32,10 @@ public class PvPToggle {
     @Inject
     private Logger logger;
 
-    // true = pvp is on, false = pvp is off
-    private boolean defaultPvp;
     private HashMap<UUID, Boolean> pvp = new HashMap<>();
     private HashMap<UUID, Long> cooldowns = new HashMap<>();
 
-    @Inject
-    @DefaultConfig(sharedRoot = true)
-    private Path config;
+    private Config config;
 
     private static Text toggleText = Text.builder("[Toggle]")
             .color(TextColors.YELLOW)
@@ -52,20 +47,7 @@ public class PvPToggle {
     public void onPreInit(GamePreInitializationEvent event) {
         logger.info("Enabling PvPToggle");
 
-        ConfigurationLoader<CommentedConfigurationNode> loader = HoconConfigurationLoader.builder().setPath(config).build();
-        CommentedConfigurationNode rootNode = loader.createEmptyNode(ConfigurationOptions.defaults());
-
-        if (!Files.exists(config)) {
-            try {
-                Files.createFile(config);
-                rootNode.getNode("default-pvp").setValue(true).setComment("true = PvP is on by default, false = PvP is off by default");
-                loader.save(rootNode);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        defaultPvp = rootNode.getNode("default-pvp").getBoolean();
+        config = new Config();
 
         CommandSpec pvpToggleCommandSpec = CommandSpec.builder()
                 .description(Text.of("PvP toggle command"))
@@ -78,10 +60,8 @@ public class PvPToggle {
                         long time = System.currentTimeMillis();
 
                         if (cooldowns.containsKey(uuid)) {
-                            int cooldownSeconds = 10;
-
-                            if (cooldowns.get(uuid) > time - (cooldownSeconds * 1000)) {
-                                source.sendMessage(Text.of(TextColors.RED, "You must wait " + (10 - ((time - cooldowns.get(uuid)) / 1000)) + " seconds before toggling PvP again"));
+                            if (cooldowns.get(uuid) > time - (config.cooldown * 1000)) {
+                                source.sendMessage(Text.of(TextColors.RED, "You must wait " + (config.cooldown - ((time - cooldowns.get(uuid)) / 1000)) + " seconds before toggling PvP again"));
                                 return CommandResult.success();
                             }
 
@@ -156,7 +136,7 @@ public class PvPToggle {
     @Listener
     public void onPlayerLogin(ClientConnectionEvent.Join event) {
         UUID uuid = event.getTargetEntity().getUniqueId();
-        pvp.put(uuid, defaultPvp);
+        pvp.put(uuid, config.defaultPvp);
     }
 
     @Listener
