@@ -24,6 +24,7 @@ import org.spongepowered.api.text.format.TextColors;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.UUID;
 
@@ -34,7 +35,8 @@ public class PvPToggle {
 
     // true = pvp is on, false = pvp is off
     private boolean defaultPvp;
-    private HashMap<UUID, Boolean> pvp = new HashMap<UUID, Boolean>();
+    private HashMap<UUID, Boolean> pvp = new HashMap<>();
+    private HashMap<UUID, Long> cooldowns = new HashMap<>();
 
     @Inject
     @DefaultConfig(sharedRoot = true)
@@ -73,6 +75,21 @@ public class PvPToggle {
                         Player player = (Player) source;
                         UUID uuid = player.getUniqueId();
 
+                        long time = System.currentTimeMillis();
+
+                        if (cooldowns.containsKey(uuid)) {
+                            int cooldownSeconds = 10;
+
+                            if (cooldowns.get(uuid) > time - (cooldownSeconds * 1000)) {
+                                source.sendMessage(Text.of(TextColors.RED, "You must wait " + (10 - ((time - cooldowns.get(uuid)) / 1000)) + " seconds before toggling PvP again"));
+                                return CommandResult.success();
+                            }
+
+                            cooldowns.replace(uuid, time);
+                        } else {
+                            cooldowns.put(uuid, time);
+                        }
+
                         boolean newValue = !pvp.get(uuid);
 
                         pvp.replace(uuid, newValue);
@@ -91,7 +108,7 @@ public class PvPToggle {
 
                         player.sendMessage(text);
                     } else {
-                        source.sendMessage(Text.of("You must be a player to use this command"));
+                        source.sendMessage(Text.of(TextColors.RED, "You must be a player to use this command"));
                     }
 
                     return CommandResult.success();
