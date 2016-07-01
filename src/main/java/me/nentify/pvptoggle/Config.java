@@ -18,26 +18,19 @@ public class Config {
     public boolean defaultPvp;
     public int cooldown;
 
-    public Config(Path configPath) {
+    public Config(Path configPath) throws IOException {
         loader = HoconConfigurationLoader.builder().setPath(configPath).build();
 
         if (!Files.exists(configPath)) {
-            try {
-                Files.createFile(configPath);
-                config = loader.load();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            Files.createFile(configPath);
         }
+
+        config = loader.load();
 
         check("default-pvp", true, "true = PvP is on by default, false = PvP is off by default");
         check("cooldown", 10, "Cooldown between toggling your PvP status in seconds");
 
-        try {
-            loader.save(config);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        loader.save(config);
 
         defaultPvp = config.getNode("default-pvp").getBoolean();
         cooldown = config.getNode("cooldown").getInt();

@@ -10,6 +10,7 @@ import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.format.TextColors;
 
 import java.util.HashMap;
+import java.util.Optional;
 import java.util.UUID;
 
 public class PvpCommand implements CommandExecutor {
@@ -27,40 +28,74 @@ public class PvpCommand implements CommandExecutor {
             Player player = (Player) source;
             UUID uuid = player.getUniqueId();
 
-            long time = System.currentTimeMillis();
+            if (args.getOne("option").isPresent()) {
+                String arg = args.<String>getOne("option").get();
 
-            if (cooldowns.containsKey(uuid)) {
-                if (cooldowns.get(uuid) > time - (cooldown * 1000) && !player.hasPermission("pvptoggle.nocooldown")) {
-                    source.sendMessage(Text.of(TextColors.RED, "You must wait " + (cooldown - ((time - cooldowns.get(uuid)) / 1000)) + " seconds before toggling PvP again"));
-                    return CommandResult.success();
+                if (arg.equals("on")) {
+                    if (PvpToggle.pvp.containsKey(uuid)) {
+                        if (!PvpToggle.pvp.get(uuid)) {
+                            togglePvp(player);
+                        } else {
+                            player.sendMessage(Text.of(TextColors.RED, "You already have PvP enabled!"));
+                        }
+
+                        return CommandResult.success();
+                    }
                 }
 
-                cooldowns.replace(uuid, time);
-            } else {
-                cooldowns.put(uuid, time);
+                if (arg.equals("off")) {
+                    if (PvpToggle.pvp.containsKey(uuid)) {
+                        if (PvpToggle.pvp.get(uuid)) {
+                            togglePvp(player);
+                        } else {
+                            player.sendMessage(Text.of(TextColors.RED, "You already have PvP disabled!"));
+                        }
+
+                        return CommandResult.success();
+                    }
+                }
             }
 
-            boolean newValue = !PvpToggle.pvp.get(uuid);
-
-            PvpToggle.pvp.replace(uuid, newValue);
-
-            Text text;
-
-            if (newValue) {
-                text = Text.builder("PvP enabled ").color(TextColors.DARK_RED)
-                        .append(Texts.toggleText)
-                        .build();
-            } else {
-                text = Text.builder("PvP disabled ").color(TextColors.DARK_GREEN)
-                        .append(Texts.toggleText)
-                        .build();
-            }
-
-            player.sendMessage(text);
+            togglePvp(player);
         } else {
             source.sendMessage(Text.of(TextColors.RED, "You must be a player to use this command"));
         }
 
         return CommandResult.success();
+    }
+
+    private void togglePvp(Player player) {
+        UUID uuid = player.getUniqueId();
+
+        long time = System.currentTimeMillis();
+
+        if (cooldowns.containsKey(uuid)) {
+            if (cooldowns.get(uuid) > time - (cooldown * 1000) && !player.hasPermission("pvptoggle.nocooldown")) {
+                player.sendMessage(Text.of(TextColors.RED, "You must wait " + (cooldown - ((time - cooldowns.get(uuid)) / 1000)) + " seconds before toggling PvP again"));
+                return;
+            }
+
+            cooldowns.replace(uuid, time);
+        } else {
+            cooldowns.put(uuid, time);
+        }
+
+        boolean newValue = !PvpToggle.pvp.get(uuid);
+
+        PvpToggle.pvp.replace(uuid, newValue);
+
+        Text text;
+
+        if (newValue) {
+            text = Text.builder("PvP enabled ").color(TextColors.DARK_RED)
+                    .append(Texts.toggleText)
+                    .build();
+        } else {
+            text = Text.builder("PvP disabled ").color(TextColors.DARK_GREEN)
+                    .append(Texts.toggleText)
+                    .build();
+        }
+
+        player.sendMessage(text);
     }
 }

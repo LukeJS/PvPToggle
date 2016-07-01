@@ -3,7 +3,7 @@ package me.nentify.pvptoggle;
 import com.google.inject.Inject;
 import org.slf4j.Logger;
 import org.spongepowered.api.Sponge;
-import org.spongepowered.api.command.CommandResult;
+import org.spongepowered.api.command.args.GenericArguments;
 import org.spongepowered.api.command.spec.CommandSpec;
 import org.spongepowered.api.config.DefaultConfig;
 import org.spongepowered.api.entity.living.player.Player;
@@ -14,88 +14,45 @@ import org.spongepowered.api.event.game.state.GamePreInitializationEvent;
 import org.spongepowered.api.event.network.ClientConnectionEvent;
 import org.spongepowered.api.plugin.Plugin;
 import org.spongepowered.api.text.Text;
-import org.spongepowered.api.text.action.TextActions;
 import org.spongepowered.api.text.format.TextColors;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.UUID;
 
-@Plugin(id = "pvptoggle", name = "PvPToggle", version = "1.1.0")
-public class PvPToggle {
+@Plugin(id = "pvptoggle", name = "PvpToggle", version = "1.1.0")
+public class PvpToggle {
     @Inject
     private Logger logger;
 
     @Inject
     @DefaultConfig(sharedRoot = true)
     private Path configPath;
-
-    private HashMap<UUID, Boolean> pvp = new HashMap<>();
-    private HashMap<UUID, Long> cooldowns = new HashMap<>();
-
     private Config config;
 
-    private static Text toggleText = Text.builder("[Toggle]")
-            .color(TextColors.YELLOW)
-            .onHover(TextActions.showText(Text.of("Toggle your PvP status")))
-            .onClick(TextActions.runCommand("/pvp"))
-            .build();
+    public static HashMap<UUID, Boolean> pvp = new HashMap<>();
 
     @Listener
     public void onPreInit(GamePreInitializationEvent event) {
-        logger.info("Enabling PvPToggle");
+        logger.info("Enabling PvpToggle");
 
-        config = new Config(configPath);
+        try {
+            config = new Config(configPath);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         CommandSpec pvpToggleCommandSpec = CommandSpec.builder()
                 .description(Text.of("PvP toggle command"))
                 .permission("pvptoggle.use")
-                .executor((source, context) -> {
-                    if (source instanceof Player) {
-                        Player player = (Player) source;
-                        UUID uuid = player.getUniqueId();
-
-                        long time = System.currentTimeMillis();
-
-                        if (cooldowns.containsKey(uuid)) {
-                            if (cooldowns.get(uuid) > time - (config.cooldown * 1000) && !player.hasPermission("pvptoggle.nocooldown")) {
-                                source.sendMessage(Text.of(TextColors.RED, "You must wait " + (config.cooldown - ((time - cooldowns.get(uuid)) / 1000)) + " seconds before toggling PvP again"));
-                                return CommandResult.success();
-                            }
-
-                            cooldowns.replace(uuid, time);
-                        } else {
-                            cooldowns.put(uuid, time);
-                        }
-
-                        boolean newValue = !pvp.get(uuid);
-
-                        pvp.replace(uuid, newValue);
-
-                        Text text;
-
-                        if (newValue) {
-                            text = Text.builder("PvP enabled ").color(TextColors.DARK_RED)
-                                    .append(toggleText)
-                                    .build();
-                        } else {
-                            text = Text.builder("PvP disabled ").color(TextColors.DARK_GREEN)
-                                    .append(toggleText)
-                                    .build();
-                        }
-
-                        player.sendMessage(text);
-                    } else {
-                        source.sendMessage(Text.of(TextColors.RED, "You must be a player to use this command"));
-                    }
-
-                    return CommandResult.success();
-                })
+                .arguments(GenericArguments.optional(GenericArguments.string(Text.of("option"))))
+                .executor(new PvpCommand(config.cooldown))
                 .build();
 
         Sponge.getCommandManager().register(this, pvpToggleCommandSpec, "pvp");
 
-        logger.info("PvPToggle enabled");
+        logger.info("PvpToggle enabled");
     }
 
     @Listener
@@ -118,8 +75,11 @@ public class PvPToggle {
         } else
             return;
 
+        if (attacker.hasPermission("pvptoggle.bypass"))
+            return;
+
         if (!pvp.get(attacker.getUniqueId())) {
-            attacker.sendMessage(Text.builder("You have PvP disabled ").color(TextColors.RED).append(toggleText).build());
+            attacker.sendMessage(Text.builder("You have PvP disabled ").color(TextColors.RED).append(Texts.toggleText).build());
             event.setCancelled(true);
             return;
         }
