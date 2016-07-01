@@ -18,6 +18,8 @@ import org.spongepowered.api.event.game.state.GamePreInitializationEvent;
 import org.spongepowered.api.event.network.ClientConnectionEvent;
 import org.spongepowered.api.plugin.Plugin;
 import org.spongepowered.api.text.Text;
+import org.spongepowered.api.text.action.TextActions;
+import org.spongepowered.api.text.format.TextColors;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -37,6 +39,12 @@ public class PvPToggle {
     @Inject
     @DefaultConfig(sharedRoot = true)
     private Path config;
+
+    private static Text toggleText = Text.builder("[Toggle]")
+            .color(TextColors.YELLOW)
+            .onHover(TextActions.showText(Text.of("Toggle your PvP status")))
+            .onClick(TextActions.runCommand("/pvp"))
+            .build();
 
     @Listener
     public void onPreInit(GamePreInitializationEvent event) {
@@ -68,7 +76,20 @@ public class PvPToggle {
                         boolean newValue = !pvp.get(uuid);
 
                         pvp.replace(uuid, newValue);
-                        player.sendMessage(Text.of("PvP " + (newValue ? "enabled" : "disabled")));
+
+                        Text text;
+
+                        if (newValue) {
+                            text = Text.builder("PvP enabled ").color(TextColors.DARK_RED)
+                                    .append(toggleText)
+                                    .build();
+                        } else {
+                            text = Text.builder("PvP disabled ").color(TextColors.DARK_GREEN)
+                                    .append(toggleText)
+                                    .build();
+                        }
+
+                        player.sendMessage(text);
                     } else {
                         source.sendMessage(Text.of("You must be a player to use this command"));
                     }
@@ -103,13 +124,13 @@ public class PvPToggle {
             return;
 
         if (!pvp.get(attacker.getUniqueId())) {
-            attacker.sendMessage(Text.of("You have PvP disabled, use /pvp to enable it"));
+            attacker.sendMessage(Text.builder("You have PvP disabled ").color(TextColors.RED).append(toggleText).build());
             event.setCancelled(true);
             return;
         }
 
         if (!pvp.get(target.getUniqueId())) {
-            attacker.sendMessage(Text.of("Your target has PvP disabled"));
+            attacker.sendMessage(Text.of(TextColors.RED, "Your target has PvP disabled"));
             event.setCancelled(true);
             return;
         }
