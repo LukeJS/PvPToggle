@@ -1,10 +1,6 @@
 package me.nentify.pvptoggle;
 
 import com.google.inject.Inject;
-import ninja.leaping.configurate.ConfigurationOptions;
-import ninja.leaping.configurate.commented.CommentedConfigurationNode;
-import ninja.leaping.configurate.hocon.HoconConfigurationLoader;
-import ninja.leaping.configurate.loader.ConfigurationLoader;
 import org.slf4j.Logger;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.command.CommandResult;
@@ -21,16 +17,18 @@ import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.action.TextActions;
 import org.spongepowered.api.text.format.TextColors;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.UUID;
 
-@Plugin(id = "pvptoggle", name = "PvPToggle", version = "1.0.0")
+@Plugin(id = "pvptoggle", name = "PvPToggle", version = "1.1.0")
 public class PvPToggle {
     @Inject
     private Logger logger;
+
+    @Inject
+    @DefaultConfig(sharedRoot = true)
+    private Path configPath;
 
     private HashMap<UUID, Boolean> pvp = new HashMap<>();
     private HashMap<UUID, Long> cooldowns = new HashMap<>();
@@ -47,7 +45,7 @@ public class PvPToggle {
     public void onPreInit(GamePreInitializationEvent event) {
         logger.info("Enabling PvPToggle");
 
-        config = new Config();
+        config = new Config(configPath);
 
         CommandSpec pvpToggleCommandSpec = CommandSpec.builder()
                 .description(Text.of("PvP toggle command"))
