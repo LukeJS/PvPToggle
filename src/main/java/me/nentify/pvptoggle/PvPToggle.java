@@ -21,7 +21,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.UUID;
 
-@Plugin(id = "pvptoggle", name = "PvpToggle", version = "1.1.0")
+@Plugin(id = "pvptoggle", name = "PvpToggle", version = "1.2.0")
 public class PvpToggle {
     @Inject
     private Logger logger;
